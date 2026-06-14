@@ -1,0 +1,39 @@
+name: YouTube Content Engine
+
+on:
+  schedule:
+    # 07:15 UTC daily — fills the idea queue before you start the day
+    - cron: "15 7 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Log ideas instead of writing to Airtable"
+        type: boolean
+        default: false
+
+concurrency:
+  group: yt-content-engine
+  cancel-in-progress: false
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Generate video ideas
+        env:
+          AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
+          YT_AIRTABLE_BASE_ID: ${{ secrets.YT_AIRTABLE_BASE_ID }}
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          YT_DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+        run: python -m yt_content.main generate
